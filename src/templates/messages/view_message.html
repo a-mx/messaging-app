@@ -1,0 +1,14 @@
+<html>
+<head>
+    <title>{{ message.subject }}</title>
+</head>
+<body>
+    <h2>{{ message.subject }}</h2>
+    <p><strong>From:</strong> {{ message.sender_username }}</p>
+    <p><strong>Date:</strong> {{ message.timestamp }}</p>
+    <hr>
+    <p>{{ message.body }}</p>
+    <hr>
+    <a href="{{ url_for('messages.messages') }}">Return to inbox</a>
+</body>
+</html>

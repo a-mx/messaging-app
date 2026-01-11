@@ -1,0 +1,35 @@
+<html>
+<head>
+    <title>New message</title>
+</head>
+<body>
+    <h2>Send message</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div style="color: red;">
+        {% for message in messages %}
+          <p>{{ message }}</p>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    <form method="post">
+        <div>
+            <label for="recipient">Username:</label><br>
+            <input type="text" id="recipient" name="recipient" required>
+        </div>
+        <div>
+            <label for="subject">Topic:</label><br>
+            <input type="text" id="subject" name="subject" required>
+        </div>
+        <div>
+            <label for="body">Content:</label><br>
+            <textarea id="body" name="body" rows="10" cols="50" required></textarea>
+        </div>
+        <div>
+            <input type="submit" value="Wyślij">
+        </div>
+    </form>
+    <p><a href="{{ url_for('messages.dashboard') }}">Anuluj</a></p>
+</body>
+</html>
