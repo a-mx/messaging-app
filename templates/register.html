@@ -7,6 +7,14 @@
   <input type="password" id="password" name="password"><br>
   <input type="submit" value="Register">
 </form>
-
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div style="color: red; margin-bottom: 10px;">
+    {% for message in messages %}
+      <p>{{ message }}</p>
+    {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
 </body>
 </html>
