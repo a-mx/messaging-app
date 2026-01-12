@@ -45,6 +45,22 @@ def view_message(message_id):
 
     return render_template("messages/view_message.html", message=message)
 
+@bp.route("/message/<int:message_id>/delete", methods=['POST'])
+@login_required
+def delete_message(message_id):
+    db = get_db()
+
+    message = db.execute(
+        'SELECT id FROM messages WHERE id = ? AND recipient_id = ?', (message_id, current_user.id)
+    ).fetchone()
+    if message:
+        db.execute("DELETE FROM messages WHERE id = ?", (message_id,))
+        db.commit()
+        flash("Message deleted")
+    else:
+        flash("Could not delete this message")
+    return redirect(url_for('messages.messages'))
+
 @bp.route("/send", methods=['GET', 'POST'])
 @login_required
 def send_message():
