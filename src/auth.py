@@ -44,16 +44,17 @@ def register():
             return redirect(url_for('auth.register'))
         
         pepper = current_app.config['PASSWORD_PEPPER']
-        password = password + pepper
-        hashed_password = argon2.hash(password)
+        password_with_pepper = password + pepper
+        hashed_password = argon2.hash(password_with_pepper)
 
         rsa_keys = RSA.generate(BITS)
         public_key = rsa_keys.public_key().export_key()
+    
         private_key = rsa_keys.export_key(
             passphrase=password,
             pkcs=8,
             protection="scryptAndAES128-CBC"
-            )
+        )
         
 
         db.execute('INSERT INTO users (username, password, public_key, private_key) VALUES (?, ?, ?, ?)', (username, hashed_password, public_key, private_key))

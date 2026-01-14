@@ -1,17 +1,23 @@
 <html>
 <head>
-    <title>{{ message.subject }}</title>
+    <title>Decrypt Message</title>
 </head>
 <body>
-    <h2>{{ message.subject }}</h2>
-    <p><strong>From:</strong> {{ message.sender_username }}</p>
-    <p><strong>Date:</strong> {{ message.timestamp }}</p>
-    <hr>
-    <p>{{ message.body }}</p>
-    <hr>
-    <a href="{{ url_for('messages.messages') }}">Return to inbox</a>
-        <form action="{{ url_for('messages.delete_message', message_id=message.id) }}" method="post" style="display: inline; margin-left: 20px;">
-        <input type="submit" value="Delete Message" onclick="return confirm('Are you sure you want to delete this message?');">
+    <h2>Decrypt Message: {{ message.subject }}</h2>
+    <p>To view this encrypted message, please enter your login password.</p>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div style="color: red;">
+        {% for message in messages %}
+          <p>{{ message }}</p>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    <form method="post">
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+        <input type="submit" value="Decrypt">
     </form>
 </body>
 </html>

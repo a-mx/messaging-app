@@ -13,7 +13,7 @@
         </div>
       {% endif %}
     {% endwith %}
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
         <div>
             <label for="recipient">Username:</label><br>
             <input type="text" id="recipient" name="recipient" required>
@@ -27,7 +27,11 @@
             <textarea id="body" name="body" rows="10" cols="50" required></textarea>
         </div>
         <div>
-            <input type="submit" value="Wyślij">
+        <label for="attachment">Attachment:</label><br>
+        <input type="file" id="attachment" name="attachment">
+        </div>
+        <div>
+            <input type="submit" value="Send">
         </div>
     </form>
     <p><a href="{{ url_for('messages.dashboard') }}">Anuluj</a></p>

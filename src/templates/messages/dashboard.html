@@ -1,0 +1,13 @@
+Hello, {{ current_user.username }}! <br>
+<a href='{{ url_for('messages.messages') }}'>View Messages</a> | 
+<a href='{{ url_for('messages.send_message') }}'>Send New Message</a> | 
+<a href='{{ url_for('auth.logout') }}'>Logout</a>
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div style="color: red;">
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+    </div>
+    {% endif %}
+{% endwith %}
