@@ -1,11 +1,15 @@
 import os
 from flask import Flask
 from flask_login import LoginManager
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY='92f46bb69a19c237a1014b94b7a628f0', 
+        SECRET_KEY=os.environ.get('SECRET_KEY'),
+        PASSWORD_PEPPER=os.environ.get('PASSWORD_PEPPER'),
         DATABASE='sqlite3.db',
     )
 

@@ -8,5 +8,3 @@ with open('schema.sql') as f:
 
 db.commit()
 db.close()
-
-print("Baza danych została pomyślnie zainicjowana.")

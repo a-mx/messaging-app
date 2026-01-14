@@ -1,8 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from passlib.hash import argon2
 from .db import get_db
 from .models.user import User
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
 
 bp = Blueprint('auth', __name__)
 
@@ -13,6 +17,11 @@ def login():
         password = request.form['password']
         db = get_db()
         user_row = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+
+        pepper = current_app.config['PASSWORD_PEPPER']
+
+        password = password + pepper
+
 
         if user_row and argon2.verify(password, user_row['password']):
             user = User(user_id=user_row['id'], username=user_row['username'])
@@ -33,9 +42,15 @@ def register():
         if user_exists:
             flash('Username already taken.')
             return redirect(url_for('auth.register'))
-
+        
+        pepper = current_app.config['PASSWORD_PEPPER']
+        password = password + pepper
         hashed_password = argon2.hash(password)
-        db.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, hashed_password))
+
+        public_key = None
+        private_key = None
+
+        db.execute('INSERT INTO users (username, password, public_key, private_key) VALUES (?, ?, ?, ?)', (username, hashed_password, public_key, private_key))
         db.commit()
         flash('Registration successful.')
         return redirect(url_for("auth.login"))

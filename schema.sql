@@ -4,7 +4,9 @@ DROP TABLE IF EXISTS messages;
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
+    password TEXT NOT NULL,
+    public_key TEXT,
+    private_key TEXT
 );
 
 CREATE TABLE messages (
