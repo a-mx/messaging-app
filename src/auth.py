@@ -7,7 +7,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
-
+BITS = 1024
 bp = Blueprint('auth', __name__)
 
 @bp.route("/", methods=['GET', 'POST'])
@@ -47,8 +47,14 @@ def register():
         password = password + pepper
         hashed_password = argon2.hash(password)
 
-        public_key = None
-        private_key = None
+        rsa_keys = RSA.generate(BITS)
+        public_key = rsa_keys.public_key().export_key()
+        private_key = rsa_keys.export_key(
+            passphrase=password,
+            pkcs=8,
+            protection="scryptAndAES128-CBC"
+            )
+        
 
         db.execute('INSERT INTO users (username, password, public_key, private_key) VALUES (?, ?, ?, ?)', (username, hashed_password, public_key, private_key))
         db.commit()
