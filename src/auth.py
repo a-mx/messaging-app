@@ -8,11 +8,28 @@ from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 import re
+import time
 BITS = 1024
+MAX_IP_ATTEMPTS = 5
+IP_LOCKOUT_SECONDS = 300 
+ip_attempts_cache = {}
 bp = Blueprint('auth', __name__)
+
+def get_real_ip():
+    if request.headers.get('X-Real-IP'):
+        return request.headers.get('X-Real-IP')
+    return request.remote_addr
 
 @bp.route("/", methods=['GET', 'POST'])
 def login():
+    ip_addr = get_real_ip()
+    if ip_addr in ip_attempts_cache:
+        attempts, first_attempt_time = ip_attempts_cache[ip_addr]
+        if attempts >= MAX_IP_ATTEMPTS and time.time() - first_attempt_time < IP_LOCKOUT_SECONDS:
+            flash(f"Too many login attempts. Please try again in a few minutes.")
+            return render_template("auth/login.html")
+        if time.time() - first_attempt_time >= IP_LOCKOUT_SECONDS:
+            ip_attempts_cache.pop(ip_addr, None)
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -25,10 +42,16 @@ def login():
 
 
         if user_row and argon2.verify(password, user_row['password']):
+            ip_attempts_cache.pop(ip_addr, None)
             user = User(user_id=user_row['id'], username=user_row['username'])
             login_user(user)
             return redirect(url_for('messages.dashboard'))
         else:
+            if ip_addr in ip_attempts_cache:
+                attempts, first_attempt_time = ip_attempts_cache[ip_addr]
+                ip_attempts_cache[ip_addr] = (attempts + 1, first_attempt_time)
+            else:
+                ip_attempts_cache[ip_addr] = (1, time.time())
             flash('Wrong username or password.')
     return render_template("auth/login.html")
 
