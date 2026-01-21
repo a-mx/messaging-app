@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - PASSWORD_PEPPER=${PASSWORD_PEPPER}
+    volumes:
+      - ./instance:/app/instance
