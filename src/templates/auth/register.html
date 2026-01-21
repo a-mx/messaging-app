@@ -4,8 +4,10 @@
   <label for="username">Username: </label>
   <input type="text" id="username" name="username"><br>
   <label for="password">Password: </label>
-  <input type="password" id="password" name="password"><br>
+  <input type="password" id="password" name="password"onkeyup="checkPasswordStrength();">
+  <span id="password-strength-text"></span><br>
   <input type="submit" value="Register">
+  <a href="/">Return</a>
 </form>
 {% with messages = get_flashed_messages() %}
   {% if messages %}
@@ -16,5 +18,53 @@
     </div>
   {% endif %}
 {% endwith %}
+
+
+<script>
+function checkPasswordStrength() {
+    const password = document.getElementById('password').value;
+    const strengthText = document.getElementById('password-strength-text');
+    let strength = 0;
+
+    if (password.length >= 8) {
+        strength += 1;
+    }
+    if (password.match(/[a-z]/)) {
+        strength += 1;
+    }
+    if (password.match(/[A-Z]/)) {
+        strength += 1;
+    }
+    if (password.match(/[0-9]/)) {
+        strength += 1;
+    }
+    if (password.match(/[!@#$%^&*(),.?\":{}|<>]/)) {
+        strength += 1;
+    }
+
+    if (password.length === 0) {
+        strengthText.innerHTML = '';
+        return;
+    }
+
+    switch (strength) {
+        case 0:
+        case 1:
+        case 2:
+            strengthText.innerHTML = 'Weak';
+            strengthText.style.color = 'red';
+            break;
+        case 3:
+            strengthText.innerHTML = 'Good';
+            strengthText.style.color = 'orange';
+            break;
+        case 4:
+        case 5:
+            strengthText.innerHTML = 'Strong';
+            strengthText.style.color = 'green';
+            break;
+    }
+}
+</script>
 </body>
 </html>

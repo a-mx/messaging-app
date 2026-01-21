@@ -7,6 +7,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
+import re
 BITS = 1024
 bp = Blueprint('auth', __name__)
 
@@ -31,11 +32,31 @@ def login():
             flash('Wrong username or password.')
     return render_template("auth/login.html")
 
+def is_password_strong(password):
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain lowercase letters."
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain uppercase letters."
+    if not re.search(r"[0-9]", password):
+        return False, "Password must contain digits."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "Password must contain special characters."
+    return True, ""
+
+
 @bp.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+
+        is_strong, message = is_password_strong(password)
+        if not is_strong:
+            flash(message)
+            return redirect(url_for('auth.register'))
+
         db = get_db()
         user_exists = db.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
 
