@@ -152,7 +152,7 @@ def send_message():
         recipient = db.execute('SELECT * FROM users WHERE username = ?', (recipient_username,)).fetchone()
 
         if recipient is None or recipient['public_key'] is None:
-            flash('User not found or user has not set up encryption keys.')
+            flash('Message sent.')
             return redirect(url_for('messages.send_message'))
 
         try:
@@ -202,11 +202,11 @@ def send_message():
                 (current_user.id, recipient['id'], subject, json.dumps(encrypted_payload))
             )
             db.commit()
-            flash('Message sent (signed).')
+            flash('Message sent.')
             return redirect(url_for('messages.dashboard'))
 
         except (ValueError, TypeError):
-            flash("Could not sign/encrypt message (wrong signing password?).")
+            flash("Could not sign/encrypt message.")
             return redirect(url_for('messages.send_message'))
         except Exception as e:
             print(f"Error during sending: {e}")

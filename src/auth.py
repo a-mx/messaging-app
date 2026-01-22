@@ -4,9 +4,6 @@ from passlib.hash import argon2
 from .db import get_db
 from .models.user import User
 from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Signature import pkcs1_15
-from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 import re
@@ -16,6 +13,15 @@ import base64
 import io
 import pyotp
 import qrcode
+
+ARGON2_PARAMS = {
+    "type": "ID",
+    "rounds": 4,
+    "memory_cost": 65536,
+    "parallelism": 4,
+    "hash_len": 32,
+    "salt_size": 16,
+}
 
 BITS = 2048
 MAX_IP_ATTEMPTS = 5
@@ -28,6 +34,19 @@ def get_real_ip():
     if request.headers.get('X-Real-IP'):
         return request.headers.get('X-Real-IP')
     return request.remote_addr
+
+def _hash_password(password_with_pepper: str) -> str:
+    return argon2.using(
+        type=ARGON2_PARAMS["type"],
+        rounds=ARGON2_PARAMS["rounds"],
+        memory_cost=ARGON2_PARAMS["memory_cost"],
+        parallelism=ARGON2_PARAMS["parallelism"],
+        hash_len=ARGON2_PARAMS["hash_len"],
+        salt_size=ARGON2_PARAMS["salt_size"],
+    ).hash(password_with_pepper)
+
+def _verify_password(password_with_pepper: str, stored_hash: str) -> bool:
+    return argon2.verify(password_with_pepper, stored_hash)
 
 def _get_totp_aes_key() -> bytes:
     key = current_app.config.get("TOTP_ENCRYPTION_KEY")
@@ -100,7 +119,7 @@ def login():
         pepper = current_app.config['PASSWORD_PEPPER']
         password = password + pepper
 
-        if user_row and argon2.verify(password, user_row['password']):
+        if user_row and _verify_password(password, user_row['password']):
             ip_attempts_cache.pop(ip_addr, None)
             session.clear()
             session['pre_2fa_user_id'] = user_row['id']
@@ -190,7 +209,7 @@ def register():
 
         pepper = current_app.config['PASSWORD_PEPPER']
         password_with_pepper = password + pepper
-        hashed_password = argon2.hash(password_with_pepper)
+        hashed_password = _hash_password(password_with_pepper)
 
         rsa_keys = RSA.generate(BITS)
         public_key = rsa_keys.public_key().export_key()
