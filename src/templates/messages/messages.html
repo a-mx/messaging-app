@@ -25,6 +25,16 @@
         </tr>
         {% endfor %}
     </table>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div style="color: red;">
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}   
     <p><a href="{{ url_for('messages.dashboard') }}">Return to dashboard.</a></p>
 </body>
+
 </html>
