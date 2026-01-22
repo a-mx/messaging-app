@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session
-from flask_login import login_user, logout_user, login_required, current_user
+from flask_login import login_user, logout_user, login_required
 from passlib.hash import argon2
 from .db import get_db
 from .models.user import User
@@ -46,7 +46,10 @@ def _hash_password(password_with_pepper: str) -> str:
     ).hash(password_with_pepper)
 
 def _verify_password(password_with_pepper: str, stored_hash: str) -> bool:
-    return argon2.verify(password_with_pepper, stored_hash)
+    try:
+        return argon2.verify(password_with_pepper, stored_hash)
+    except Exception:
+        return False
 
 def _get_totp_aes_key() -> bytes:
     key = current_app.config.get("TOTP_ENCRYPTION_KEY")
@@ -56,6 +59,8 @@ def _get_totp_aes_key() -> bytes:
         raw = base64.b64decode(key, validate=True)
     except Exception as e:
         raise RuntimeError("Invalid TOTP_ENCRYPTION_KEY (expected base64).") from e
+    if len(raw) not in (16, 24, 32):
+        raise RuntimeError("Invalid TOTP_ENCRYPTION_KEY length (expected 16/24/32 bytes after base64 decode).")
     return raw
 
 def _encrypt_totp_secret(secret: str) -> str:
