@@ -8,6 +8,28 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Random import get_random_bytes
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
+from werkzeug.utils import secure_filename
+import re
+
+USERNAME_RE = re.compile(r"^[A-Za-z0-9]+$")
+USERNAME_MIN_LEN = 3
+USERNAME_MAX_LEN = 32
+
+SUBJECT_MAX_LEN = 120
+BODY_MAX_LEN = 5000
+
+ATTACHMENT_MAX_BYTES = 2 * 1024 * 1024  #2MB
+ATTACHMENT_NAME_MAX_LEN = 120
+
+def normalize_text(raw: str) -> str:
+    return (raw or "").strip()
+
+def validate_recipient(username: str) -> bool:
+    if not username:
+        return False
+    if len(username) < USERNAME_MIN_LEN or len(username) > USERNAME_MAX_LEN:
+        return False
+    return USERNAME_RE.fullmatch(username) is not None
 
 bp = Blueprint('messages', __name__, url_prefix='/')
 
@@ -57,7 +79,10 @@ def view_message(message_id):
         return redirect(url_for('messages.messages'))
 
     if request.method == 'POST':
-        password = request.form.get('password')
+        password = (request.form.get('password') or "")
+        if not password:
+            flash("Password is required.")
+            return render_template("messages/view_message.html", message=message)
 
         try:
             user_private_key_encrypted = db.execute(
@@ -140,12 +165,45 @@ def delete_message(message_id):
 @login_required
 def send_message():
     if request.method == 'POST':
-        recipient_username = request.form['recipient']
-        subject = request.form['subject']
-        body = request.form['body']
+        recipient_username = normalize_text(request.form.get('recipient'))
+        subject = normalize_text(request.form.get('subject'))
+        body = request.form.get('body') or ""
         attachment = request.files.get('attachment')
 
-        signing_password = request.form.get("signing_password")
+        signing_password = request.form.get("signing_password") or ""
+
+
+        if not validate_recipient(recipient_username):
+            flash("Invalid recipient username.")
+            return redirect(url_for('messages.send_message'))
+
+        if len(subject) > SUBJECT_MAX_LEN:
+            flash(f"Subject is too long (max {SUBJECT_MAX_LEN}).")
+            return redirect(url_for('messages.send_message'))
+
+        if len(body) > BODY_MAX_LEN:
+            flash(f"Message body is too long (max {BODY_MAX_LEN}).")
+            return redirect(url_for('messages.send_message'))
+        
+        if attachment and attachment.filename:
+            safe_name = secure_filename(attachment.filename)[:ATTACHMENT_NAME_MAX_LEN]
+            if not safe_name:
+                flash("Invalid attachment filename.")
+                return redirect(url_for('messages.send_message'))
+
+            content = attachment.read()
+            if len(content) > ATTACHMENT_MAX_BYTES:
+                flash(f"Attachment too large (max {ATTACHMENT_MAX_BYTES // (1024*1024)} MiB).")
+                return redirect(url_for('messages.send_message'))
+        else:
+            safe_name = None
+            content = None
+
+        if not signing_password:
+            flash("Signing password is required to sign the message.")
+            return redirect(url_for('messages.send_message'))
+        
+
 
         db = get_db()
         recipient = db.execute('SELECT * FROM users WHERE username = ?', (recipient_username,)).fetchone()
@@ -160,9 +218,9 @@ def send_message():
                 'attachment_content': None,
                 'attachment_filename': None
             }
-            if attachment and attachment.filename != '':
-                message_data['attachment_content'] = base64.b64encode(attachment.read()).decode('utf-8')
-                message_data['attachment_filename'] = attachment.filename
+            if content is not None and safe_name is not None:
+                message_data['attachment_content'] = base64.b64encode(content).decode('utf-8')
+                message_data['attachment_filename'] = safe_name
 
             plaintext_package = json.dumps(message_data).encode('utf-8')
 
@@ -182,9 +240,6 @@ def send_message():
                 'tag': b64e(tag),
                 'ciphertext': b64e(ciphertext),
             }
-            if not signing_password:
-                flash("Signing password is required to sign the message.")
-                return redirect(url_for('messages.send_message'))
 
             sender_priv_row = db.execute(
                 "SELECT private_key FROM users WHERE id = ?",
