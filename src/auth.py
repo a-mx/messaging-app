@@ -91,9 +91,7 @@ def get_totp_aes_key() -> bytes:
     try:
         raw = base64.b64decode(key, validate=True)
     except Exception as e:
-        raise RuntimeError("Invalid TOTP_ENCRYPTION_KEY (expected base64).") from e
-    if len(raw) not in (16, 24, 32):
-        raise RuntimeError("Invalid TOTP_ENCRYPTION_KEY length (expected 16/24/32 bytes after base64 decode).")
+        raise RuntimeError("Invalid TOTP_ENCRYPTION_KEY") from e
     return raw
 
 def encrypt_totp_secret(secret: str) -> str:
@@ -267,7 +265,7 @@ def register():
         db.commit()
 
         session['show_totp_user'] = username
-        flash('Registration successful. Set up your authenticator app now.')
+        flash('Registration successful.')
         return redirect(url_for("auth.totp_setup"))
 
     return render_template("auth/register.html")

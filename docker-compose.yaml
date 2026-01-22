@@ -5,6 +5,7 @@ services:
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - PASSWORD_PEPPER=${PASSWORD_PEPPER}
+      - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY}
     volumes:
       - ./instance:/home/appuser/app/instance
   nginx:
