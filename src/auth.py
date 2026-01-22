@@ -26,6 +26,7 @@ ARGON2_PARAMS = {
 BITS = 2048
 MAX_IP_ATTEMPTS = 5
 IP_LOCKOUT_SECONDS = 300
+EXAMPLE_PASSWORD_HASH = "$argon2id$v=19$m=65536,t=4,p=4$O6eU0vo/R4jx3puz9n4PoQ$8dVfA6iA4xl1vl6ulw3R7z60nwRdqIDOk6vnZG7qmiE"
 ip_attempts_cache = {}
 
 bp = Blueprint('auth', __name__)
@@ -116,7 +117,12 @@ def login():
         pepper = current_app.config['PASSWORD_PEPPER']
         password = password + pepper
 
-        if user_row and verify_password(password, user_row['password']):
+        stored_hash = user_row['password'] if user_row else EXAMPLE_PASSWORD_HASH
+        password_ok = verify_password(password, stored_hash)
+        auth_ok = bool(user_row) and password_ok
+
+
+        if auth_ok:
             ip_attempts_cache.pop(ip_addr, None)
             session.clear()
             session['pre_2fa_user_id'] = user_row['id']
