@@ -22,7 +22,11 @@ ARGON2_PARAMS = {
     "hash_len": 32,
     "salt_size": 16,
 }
-
+USERNAME_MIN_LEN = 3
+USERNAME_MAX_LEN = 32
+PASSWORD_MIN_LEN = 8
+PASSWORD_MAX_LEN = 128
+USERNAME_RE = re.compile(r"^[A-Za-z0-9]+$")
 BITS = 2048
 MAX_IP_ATTEMPTS = 5
 IP_LOCKOUT_SECONDS = 300
@@ -35,6 +39,34 @@ def get_real_ip():
     if request.headers.get('X-Real-IP'):
         return request.headers.get('X-Real-IP')
     return request.remote_addr
+
+def normalize_username(raw: str) -> str:
+    return (raw or "").strip()
+
+def validate_username(username: str) -> tuple[bool, str]:
+    if not username:
+        return False, "Username is required."
+    if len(username) < USERNAME_MIN_LEN or len(username) > USERNAME_MAX_LEN:
+        return False, f"Username must be {USERNAME_MIN_LEN}-{USERNAME_MAX_LEN} characters long."
+    if not USERNAME_RE.fullmatch(username):
+        return False, "Username may contain only letters and digits (a-zA-Z0-9)."
+    return True, ""
+
+def validate_password(password: str) -> tuple[bool, str]:
+    password = password or ""
+    if len(password) < PASSWORD_MIN_LEN:
+        return False, f"Password must be at least {PASSWORD_MIN_LEN} characters long."
+    if len(password) > PASSWORD_MAX_LEN:
+        return False, f"Password must be at most {PASSWORD_MAX_LEN} characters long."
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain lowercase letters."
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain uppercase letters."
+    if not re.search(r"[0-9]", password):
+        return False, "Password must contain digits."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "Password must contain special characters."
+    return True, ""
 
 def hash_password(password_with_pepper: str) -> str:
     return argon2.using(
@@ -109,8 +141,16 @@ def login():
         return render_template("auth/login.html")
 
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = normalize_username(request.form.get('username'))
+        password = request.form.get('password') or ""
+
+        username_ok, _ = validate_username(username)
+        password_ok, _ = validate_password(password)
+        if not username_ok or not password_ok:
+            record_failed_attempt(ip_addr)
+            flash('Wrong username or password.')
+            return render_template("auth/login.html")
+
         db = get_db()
         user_row = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
 
@@ -181,23 +221,18 @@ def totp():
     return render_template("auth/totp.html")
 
 def is_password_strong(password):
-    if len(password) < 8:
-        return False, "Password must be at least 8 characters long."
-    if not re.search(r"[a-z]", password):
-        return False, "Password must contain lowercase letters."
-    if not re.search(r"[A-Z]", password):
-        return False, "Password must contain uppercase letters."
-    if not re.search(r"[0-9]", password):
-        return False, "Password must contain digits."
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-        return False, "Password must contain special characters."
-    return True, ""
+    return validate_password(password)
 
 @bp.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = normalize_username(request.form.get('username'))
+        password = request.form.get('password') or ""
+
+        username_ok, username_msg = validate_username(username)
+        if not username_ok:
+            flash(username_msg)
+            return redirect(url_for('auth.register'))
 
         is_strong, message = is_password_strong(password)
         if not is_strong:
@@ -256,7 +291,7 @@ def totp_setup():
         flash("2FA configuration error. Contact support.")
         return redirect(url_for("auth.login"))
 
-    issuer = current_app.config.get("TOTP_ISSUER", "ODWSI")
+    issuer = current_app.config.get("TOTP_ISSUER", "Messages")
     totp = pyotp.TOTP(totp_secret)
     uri = totp.provisioning_uri(name=user_row["username"], issuer_name=issuer)
 
