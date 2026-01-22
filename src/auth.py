@@ -52,16 +52,10 @@ def _get_totp_aes_key() -> bytes:
     key = current_app.config.get("TOTP_ENCRYPTION_KEY")
     if not key:
         raise RuntimeError("Missing TOTP_ENCRYPTION_KEY in app config")
-    if isinstance(key, str):
-        key = key.encode("utf-8")
-
     try:
         raw = base64.b64decode(key, validate=True)
     except Exception as e:
         raise RuntimeError("Invalid TOTP_ENCRYPTION_KEY (expected base64).") from e
-
-    if len(raw) not in (16, 24, 32):
-        raise RuntimeError("TOTP_ENCRYPTION_KEY must decode to 16/24/32 bytes (AES-128/192/256).")
     return raw
 
 def _encrypt_totp_secret(secret: str) -> str:
@@ -74,8 +68,6 @@ def _encrypt_totp_secret(secret: str) -> str:
 
 def _decrypt_totp_secret(token: str) -> str:
     raw = base64.b64decode(token.encode("utf-8"))
-    if len(raw) < 12 + 16 + 1:
-        raise ValueError("Invalid token length")
 
     nonce = raw[:12]
     tag = raw[12:28]
@@ -153,7 +145,7 @@ def totp():
         totp_secret = _decrypt_totp_secret(user_row["totp_secret"])
     except Exception:
         session.pop('pre_2fa_user_id', None)
-        flash("2FA configuration error. Contact support.")
+        flash("2FA configuration error.")
         return redirect(url_for("auth.login"))
 
     if request.method == "POST":
@@ -216,7 +208,7 @@ def register():
         private_key = rsa_keys.export_key(
             passphrase=password,
             pkcs=8,
-            protection="scryptAndAES128-CBC"
+            protection="scryptAndAES256-CBC"
         )
 
         totp_secret_plain = pyotp.random_base32()
