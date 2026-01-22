@@ -10,6 +10,7 @@ def create_app():
     app.config.from_mapping(
         SECRET_KEY=os.environ.get('SECRET_KEY'),
         PASSWORD_PEPPER=os.environ.get('PASSWORD_PEPPER'),
+        TOTP_ENCRYPTION_KEY=os.environ.get('TOTP_ENCRYPTION_KEY'),
         DATABASE='sqlite3.db',
     )
 
