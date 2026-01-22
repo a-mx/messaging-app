@@ -18,11 +18,6 @@ def _b64e(b: bytes) -> str:
     return base64.b64encode(b).decode("utf-8")
 
 def _signature_message(encrypted_payload: dict) -> bytes:
-    """
-    Zwraca bytes do podpisu/weryfikacji.
-    Podpisujemy kanonicznie wybrane pola payloadu (base64 stringi),
-    żeby uniknąć różnic serializacji JSON.
-    """
     parts = [
         encrypted_payload["encrypted_aes_key"],
         encrypted_payload["nonce"],
@@ -82,32 +77,31 @@ def view_message(message_id):
             cipher_rsa = PKCS1_OAEP.new(private_key)
             aes_session_key = cipher_rsa.decrypt(encrypted_aes_key)
 
-            cipher_aes = AES.new(aes_session_key, AES.MODE_EAX, nonce=nonce)
+            cipher_aes = AES.new(aes_session_key, AES.MODE_GCM, nonce=nonce)
             decrypted_package_json = cipher_aes.decrypt_and_verify(ciphertext, tag)
-
             decrypted_data = json.loads(decrypted_package_json.decode('utf-8'))
 
-            signature_status = None
-            if encrypted_payload.get("signature"):
+            # Signature status (do NOT block display)
+            signature_status = "not_signed"
+            if "signature" in encrypted_payload and encrypted_payload["signature"]:
                 sender_pub_row = db.execute(
                     "SELECT public_key FROM users WHERE id = ?",
                     (message["sender_id"],)
                 ).fetchone()
 
-                if sender_pub_row and sender_pub_row["public_key"]:
-                    sender_public_key = RSA.import_key(sender_pub_row["public_key"])
-                    sig_bytes = _b64d(encrypted_payload["signature"])
-
-                    h = SHA256.new(_signature_message(encrypted_payload))
+                if not sender_pub_row or not sender_pub_row["public_key"]:
+                    signature_status = "missing_sender_key"
+                else:
                     try:
+                        sender_public_key = RSA.import_key(sender_pub_row["public_key"])
+                        sig_bytes = _b64d(encrypted_payload["signature"])
+                        h = SHA256.new(_signature_message(encrypted_payload))
                         pkcs1_15.new(sender_public_key).verify(h, sig_bytes)
                         signature_status = "valid"
                     except (ValueError, TypeError):
                         signature_status = "invalid"
-                else:
-                    signature_status = "missing_sender_key"
-            else:
-                signature_status = "not_signed"
+                    except Exception:
+                        signature_status = "invalid"
 
             if not message['is_read']:
                 db.execute('UPDATE messages SET is_read = 1 WHERE id = ?', (message_id,))
@@ -180,7 +174,7 @@ def send_message():
             cipher_rsa = PKCS1_OAEP.new(recipient_public_key)
             encrypted_aes_key = cipher_rsa.encrypt(aes_session_key)
 
-            cipher_aes = AES.new(aes_session_key, AES.MODE_EAX)
+            cipher_aes = AES.new(aes_session_key, AES.MODE_GCM)
             ciphertext, tag = cipher_aes.encrypt_and_digest(plaintext_package)
 
             encrypted_payload = {
@@ -189,8 +183,6 @@ def send_message():
                 'tag': _b64e(tag),
                 'ciphertext': _b64e(ciphertext),
             }
-
-            # Podpis cyfrowy (opcjonalny, ale oczekiwany)
             if not signing_password:
                 flash("Signing password is required to sign the message.")
                 return redirect(url_for('messages.send_message'))

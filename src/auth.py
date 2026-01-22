@@ -17,7 +17,7 @@ import io
 import pyotp
 import qrcode
 
-BITS = 1024
+BITS = 2048
 MAX_IP_ATTEMPTS = 5
 IP_LOCKOUT_SECONDS = 300
 ip_attempts_cache = {}
