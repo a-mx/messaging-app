@@ -6,7 +6,8 @@ CREATE TABLE users (
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     public_key TEXT,
-    private_key TEXT
+    private_key TEXT,
+    totp_secret TEXT NOT NULL
 );
 
 CREATE TABLE messages (
