@@ -6,6 +6,21 @@
     <h2>{{ message.subject }}</h2>
     <p><strong>From:</strong> {{ message.sender_username }}</p>
     <p><strong>Date:</strong> {{ message.timestamp }}</p>
+    <p>
+        <strong>Signature:</strong>
+        {% if signature_status == 'valid' %}
+            <span style="color: green;">valid</span>
+        {% elif signature_status == 'invalid' %}
+            <span style="color: red;">invalid</span>
+        {% elif signature_status == 'missing_sender_key' %}
+            <span style="color: orange;">cannot verify (missing sender public key)</span>
+        {% elif signature_status == 'not_signed' %}
+            <span style="color: gray;">not signed</span>
+        {% else %}
+            <span style="color: gray;">unknown</span>
+        {% endif %}
+    </p>
+
     <hr>
     <p>{{ decrypted_data.body }}</p>
 
