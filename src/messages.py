@@ -11,13 +11,13 @@ from Crypto.Hash import SHA256
 
 bp = Blueprint('messages', __name__, url_prefix='/')
 
-def _b64d(s: str) -> bytes:
+def b64d(s: str) -> bytes:
     return base64.b64decode(s.encode("utf-8"))
 
-def _b64e(b: bytes) -> str:
+def b64e(b: bytes) -> str:
     return base64.b64encode(b).decode("utf-8")
 
-def _signature_message(encrypted_payload: dict) -> bytes:
+def signature_message(encrypted_payload: dict) -> bytes:
     parts = [
         encrypted_payload["encrypted_aes_key"],
         encrypted_payload["nonce"],
@@ -69,10 +69,10 @@ def view_message(message_id):
 
             encrypted_payload = json.loads(message['body'])
 
-            encrypted_aes_key = _b64d(encrypted_payload['encrypted_aes_key'])
-            nonce = _b64d(encrypted_payload['nonce'])
-            tag = _b64d(encrypted_payload['tag'])
-            ciphertext = _b64d(encrypted_payload['ciphertext'])
+            encrypted_aes_key = b64d(encrypted_payload['encrypted_aes_key'])
+            nonce = b64d(encrypted_payload['nonce'])
+            tag = b64d(encrypted_payload['tag'])
+            ciphertext = b64d(encrypted_payload['ciphertext'])
 
             cipher_rsa = PKCS1_OAEP.new(private_key)
             aes_session_key = cipher_rsa.decrypt(encrypted_aes_key)
@@ -81,7 +81,6 @@ def view_message(message_id):
             decrypted_package_json = cipher_aes.decrypt_and_verify(ciphertext, tag)
             decrypted_data = json.loads(decrypted_package_json.decode('utf-8'))
 
-            # Signature status (do NOT block display)
             signature_status = "not_signed"
             if "signature" in encrypted_payload and encrypted_payload["signature"]:
                 sender_pub_row = db.execute(
@@ -94,8 +93,8 @@ def view_message(message_id):
                 else:
                     try:
                         sender_public_key = RSA.import_key(sender_pub_row["public_key"])
-                        sig_bytes = _b64d(encrypted_payload["signature"])
-                        h = SHA256.new(_signature_message(encrypted_payload))
+                        sig_bytes = b64d(encrypted_payload["signature"])
+                        h = SHA256.new(signature_message(encrypted_payload))
                         pkcs1_15.new(sender_public_key).verify(h, sig_bytes)
                         signature_status = "valid"
                     except (ValueError, TypeError):
@@ -178,10 +177,10 @@ def send_message():
             ciphertext, tag = cipher_aes.encrypt_and_digest(plaintext_package)
 
             encrypted_payload = {
-                'encrypted_aes_key': _b64e(encrypted_aes_key),
-                'nonce': _b64e(cipher_aes.nonce),
-                'tag': _b64e(tag),
-                'ciphertext': _b64e(ciphertext),
+                'encrypted_aes_key': b64e(encrypted_aes_key),
+                'nonce': b64e(cipher_aes.nonce),
+                'tag': b64e(tag),
+                'ciphertext': b64e(ciphertext),
             }
             if not signing_password:
                 flash("Signing password is required to sign the message.")
@@ -193,9 +192,9 @@ def send_message():
             ).fetchone()
             sender_private_key = RSA.import_key(sender_priv_row["private_key"], passphrase=signing_password)
 
-            h = SHA256.new(_signature_message(encrypted_payload))
+            h = SHA256.new(signature_message(encrypted_payload))
             signature = pkcs1_15.new(sender_private_key).sign(h)
-            encrypted_payload["signature"] = _b64e(signature)
+            encrypted_payload["signature"] = b64e(signature)
 
             db.execute(
                 'INSERT INTO messages (sender_id, recipient_id, subject, body) VALUES (?, ?, ?, ?)',

@@ -35,7 +35,7 @@ def get_real_ip():
         return request.headers.get('X-Real-IP')
     return request.remote_addr
 
-def _hash_password(password_with_pepper: str) -> str:
+def hash_password(password_with_pepper: str) -> str:
     return argon2.using(
         type=ARGON2_PARAMS["type"],
         rounds=ARGON2_PARAMS["rounds"],
@@ -45,13 +45,13 @@ def _hash_password(password_with_pepper: str) -> str:
         salt_size=ARGON2_PARAMS["salt_size"],
     ).hash(password_with_pepper)
 
-def _verify_password(password_with_pepper: str, stored_hash: str) -> bool:
+def verify_password(password_with_pepper: str, stored_hash: str) -> bool:
     try:
         return argon2.verify(password_with_pepper, stored_hash)
     except Exception:
         return False
 
-def _get_totp_aes_key() -> bytes:
+def get_totp_aes_key() -> bytes:
     key = current_app.config.get("TOTP_ENCRYPTION_KEY")
     if not key:
         raise RuntimeError("Missing TOTP_ENCRYPTION_KEY in app config")
@@ -63,27 +63,27 @@ def _get_totp_aes_key() -> bytes:
         raise RuntimeError("Invalid TOTP_ENCRYPTION_KEY length (expected 16/24/32 bytes after base64 decode).")
     return raw
 
-def _encrypt_totp_secret(secret: str) -> str:
-    key = _get_totp_aes_key()
+def encrypt_totp_secret(secret: str) -> str:
+    key = get_totp_aes_key()
     nonce = get_random_bytes(12)
     cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
     ciphertext, tag = cipher.encrypt_and_digest(secret.encode("utf-8"))
     token = base64.b64encode(nonce + tag + ciphertext).decode("utf-8")
     return token
 
-def _decrypt_totp_secret(token: str) -> str:
+def decrypt_totp_secret(token: str) -> str:
     raw = base64.b64decode(token.encode("utf-8"))
 
     nonce = raw[:12]
     tag = raw[12:28]
     ciphertext = raw[28:]
 
-    key = _get_totp_aes_key()
+    key = get_totp_aes_key()
     cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
     secret = cipher.decrypt_and_verify(ciphertext, tag)
     return secret.decode("utf-8")
 
-def _lockout_check(ip_addr: str) -> bool:
+def lockout_check(ip_addr: str) -> bool:
     if ip_addr in ip_attempts_cache:
         attempts, first_attempt_time = ip_attempts_cache[ip_addr]
         if attempts >= MAX_IP_ATTEMPTS and time.time() - first_attempt_time < IP_LOCKOUT_SECONDS:
@@ -92,7 +92,7 @@ def _lockout_check(ip_addr: str) -> bool:
             ip_attempts_cache.pop(ip_addr, None)
     return False
 
-def _record_failed_attempt(ip_addr: str) -> None:
+def record_failed_attempt(ip_addr: str) -> None:
     if ip_addr in ip_attempts_cache:
         attempts, first_attempt_time = ip_attempts_cache[ip_addr]
         ip_attempts_cache[ip_addr] = (attempts + 1, first_attempt_time)
@@ -103,7 +103,7 @@ def _record_failed_attempt(ip_addr: str) -> None:
 def login():
     ip_addr = get_real_ip()
 
-    if _lockout_check(ip_addr):
+    if lockout_check(ip_addr):
         flash("Too many login attempts. Please try again in a few minutes.")
         return render_template("auth/login.html")
 
@@ -116,13 +116,13 @@ def login():
         pepper = current_app.config['PASSWORD_PEPPER']
         password = password + pepper
 
-        if user_row and _verify_password(password, user_row['password']):
+        if user_row and verify_password(password, user_row['password']):
             ip_attempts_cache.pop(ip_addr, None)
             session.clear()
             session['pre_2fa_user_id'] = user_row['id']
             return redirect(url_for('auth.totp'))
         else:
-            _record_failed_attempt(ip_addr)
+            record_failed_attempt(ip_addr)
             flash('Wrong username or password.')
 
     return render_template("auth/login.html")
@@ -131,7 +131,7 @@ def login():
 def totp():
     ip_addr = get_real_ip()
 
-    if _lockout_check(ip_addr):
+    if lockout_check(ip_addr):
         flash("Too many attempts. Please try again in a few minutes.")
         return render_template("auth/totp.html")
 
@@ -147,7 +147,7 @@ def totp():
         return redirect(url_for("auth.login"))
 
     try:
-        totp_secret = _decrypt_totp_secret(user_row["totp_secret"])
+        totp_secret = decrypt_totp_secret(user_row["totp_secret"])
     except Exception:
         session.pop('pre_2fa_user_id', None)
         flash("2FA configuration error.")
@@ -156,7 +156,7 @@ def totp():
     if request.method == "POST":
         code = (request.form.get("code") or "").strip().replace(" ", "")
         if not code.isdigit() or len(code) not in (6, 8):
-            _record_failed_attempt(ip_addr)
+            record_failed_attempt(ip_addr)
             flash("Invalid code format.")
             return render_template("auth/totp.html")
 
@@ -169,7 +169,7 @@ def totp():
             login_user(user)
             return redirect(url_for('messages.dashboard'))
 
-        _record_failed_attempt(ip_addr)
+        record_failed_attempt(ip_addr)
         flash("Wrong TOTP code.")
 
     return render_template("auth/totp.html")
@@ -206,7 +206,7 @@ def register():
 
         pepper = current_app.config['PASSWORD_PEPPER']
         password_with_pepper = password + pepper
-        hashed_password = _hash_password(password_with_pepper)
+        hashed_password = hash_password(password_with_pepper)
 
         rsa_keys = RSA.generate(BITS)
         public_key = rsa_keys.public_key().export_key()
@@ -217,7 +217,7 @@ def register():
         )
 
         totp_secret_plain = pyotp.random_base32()
-        totp_secret_enc = _encrypt_totp_secret(totp_secret_plain)
+        totp_secret_enc = encrypt_totp_secret(totp_secret_plain)
 
         db.execute(
             'INSERT INTO users (username, password, public_key, private_key, totp_secret) VALUES (?, ?, ?, ?, ?)',
@@ -244,7 +244,7 @@ def totp_setup():
         return redirect(url_for("auth.login"))
 
     try:
-        totp_secret = _decrypt_totp_secret(user_row["totp_secret"])
+        totp_secret = decrypt_totp_secret(user_row["totp_secret"])
     except Exception:
         session.pop('show_totp_user', None)
         flash("2FA configuration error. Contact support.")
