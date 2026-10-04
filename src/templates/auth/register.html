@@ -1,25 +1,20 @@
-<html>
-<body>
-<form action="/register" method="post">
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<form action="{{ url_for('auth.register') }}" method="post">
+  {{ form.hidden_tag() }}
   <label for="username">Username: </label>
-  <input type="text" id="username" name="username"><br>
+  {{ form.username(id="username") }}<br>
   <label for="password">Password: </label>
-  <input type="password" id="password" name="password"onkeyup="checkPasswordStrength();">
+  {{ form.password(id="password", onkeyup="checkPasswordStrength();") }}
   <span id="password-strength-text"></span><br>
   <input type="submit" value="Register">
-  <a href="/">Return</a>
+  <a href="{{ url_for('auth.login') }}">Return</a>
 </form>
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <div style="color: red; margin-bottom: 10px;">
-    {% for message in messages %}
-      <p>{{ message }}</p>
-    {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
+{% endblock %}
 
-
+{% block scripts %}
 <script>
 function checkPasswordStrength() {
     const password = document.getElementById('password').value;
@@ -66,5 +61,4 @@ function checkPasswordStrength() {
     }
 }
 </script>
-</body>
-</html>
+{% endblock %}

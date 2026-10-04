@@ -2,39 +2,27 @@ import os
 from flask import Flask
 from flask_login import LoginManager
 from dotenv import load_dotenv
+from src.config import Config
 
+from src.auth.routes import auth_bp
+from src.messages.routes import messages_bp
+
+from src.extensions import db, login_manager, csrf, migrate
 load_dotenv()
 
-def create_app():
-    app = Flask(__name__, instance_relative_config=True)
-    app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY'),
-        PASSWORD_PEPPER=os.environ.get('PASSWORD_PEPPER'),
-        TOTP_ENCRYPTION_KEY=os.environ.get('TOTP_ENCRYPTION_KEY'),
-        DATABASE='sqlite3.db',
-    )
+def create_app(config_class=Config):
+    app = Flask(__name__)
+    app.config.from_object(config_class)
 
-    login_manager = LoginManager()
-    login_manager.login_view = 'auth.login'
     login_manager.init_app(app)
-
-    from .models.user import User
-    from .db import get_db
-    @login_manager.user_loader
-    def load_user(user_id):
-        db = get_db()
-        user_row = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-        if user_row:
-            return User(user_id=user_row['id'], username=user_row['username'])
-        return None
-
-    from . import db
+    csrf.init_app(app)
     db.init_app(app)
+    migrate.init_app(app, db)
 
-    from . import auth
-    app.register_blueprint(auth.bp)
+    from src import models
 
-    from . import messages
-    app.register_blueprint(messages.bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(messages_bp)
+
 
     return app

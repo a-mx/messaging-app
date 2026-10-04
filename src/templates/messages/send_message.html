@@ -1,44 +1,35 @@
-<html>
-<head>
-    <title>New message</title>
-</head>
-<body>
-    <h2>Send message</h2>
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div style="color: red;">
-        {% for message in messages %}
-          <p>{{ message }}</p>
-        {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-    <form method="post" enctype="multipart/form-data">
-        <div>
-            <label for="recipient">Username:</label><br>
-            <input type="text" id="recipient" name="recipient" required>
-        </div>
-        <div>
-            <label for="subject">Topic:</label><br>
-            <input type="text" id="subject" name="subject" required>
-        </div>
-        <div>
-            <label for="body">Content:</label><br>
-            <textarea id="body" name="body" rows="10" cols="50" required></textarea>
-        </div>
-        <div>
-          <label for="attachment">Attachment:</label><br>
-          <input type="file" id="attachment" name="attachment">
-        </div>
-        <div>
-            <label for="signing_password">Signing password (your login password):</label><br>
-            <input type="password" id="signing_password" name="signing_password" required>
-        </div>
+{% extends "base.html" %}
+{% block title %}New message{% endblock %}
 
-        <div>
-            <input type="submit" value="Send">
-        </div>
-    </form>
-    <p><a href="{{ url_for('messages.dashboard') }}">Anuluj</a></p>
-</body>
-</html>
+{% block content %}
+<h2>Send message</h2>
+<form method="post" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+
+    <div>
+        <label for="recipient">Username:</label><br>
+        {{ form.recipient(id="recipient") }}
+    </div>
+    <div>
+        <label for="subject">Topic:</label><br>
+        {{ form.subject(id="subject") }}
+    </div>
+    <div>
+        <label for="body">Content:</label><br>
+        {{ form.body(id="body", rows="10", cols="50") }}
+    </div>
+    <div>
+        <label for="attachment">Attachment:</label><br>
+        {{ form.attachment(id="attachment") }}
+    </div>
+    <div>
+        <label for="signing_password">Signing password (your login password):</label><br>
+        {{ form.signing_password(id="signing_password") }}
+    </div>
+
+    <div>
+        <input type="submit" value="Send">
+    </div>
+</form>
+<p><a href="{{ url_for('messages.dashboard') }}">Cancel</a></p>
+{% endblock %}

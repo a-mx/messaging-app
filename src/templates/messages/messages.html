@@ -1,40 +1,31 @@
-<html>
-<head>
-    <title>Your messages</title>
-    <style>
-        .unread { font-weight: bold; }
-    </style>
-</head>
-<body>
-    <h2>Inbox</h2>
-    <table border="1" style="width:100%">
-        <tr>
-            <th>From</th>
-            <th>Topic</th>
-            <th>Date</th>
-        </tr>
-        {% for message in messages %}
-        <tr class="{{ 'unread' if not message.is_read else '' }}">
-            <td>{{ message.sender_username }}</td>
-            <td><a href="{{ url_for('messages.view_message', message_id=message.id) }}">{{ message.subject }}</a></td>
-            <td>{{ message.timestamp }}</td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="3">No messages.</td>
-        </tr>
-        {% endfor %}
-    </table>
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-    <div style="color: red;">
-    {% for message in messages %}
-        <p>{{ message }}</p>
-    {% endfor %}
-    </div>
-    {% endif %}
-    {% endwith %}   
-    <p><a href="{{ url_for('messages.dashboard') }}">Return to dashboard.</a></p>
-</body>
+{% extends "base.html" %}
+{% block title %}Your messages{% endblock %}
 
-</html>
+{% block head %}
+<style>
+    .unread { font-weight: bold; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Inbox</h2>
+<table border="1" style="width:100%">
+    <tr>
+        <th>From</th>
+        <th>Topic</th>
+        <th>Date</th>
+    </tr>
+    {% for message in messages %}
+    <tr class="{{ 'unread' if not message.is_read else '' }}">
+        <td>{{ message.sender.username }}</td>
+        <td><a href="{{ url_for('messages.view_message', message_id=message.id) }}">{{ message.subject }}</a></td>
+        <td>{{ message.timestamp }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="3">No messages.</td>
+    </tr>
+    {% endfor %}
+</table>
+<p><a href="{{ url_for('messages.dashboard') }}">Return to dashboard.</a></p>
+{% endblock %}

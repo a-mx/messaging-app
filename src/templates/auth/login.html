@@ -1,24 +1,21 @@
-<html>
-<body>
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
 
-<form action="/" method="post">
+{% block content %}
+
+<form action="{{ url_for('auth.login') }}" method="post">
+
+  {{ form.hidden_tag() }}
   <label for="username">Username: </label>
-  <input type="text" id="username" name="username"><br>
+
+  {{ form.username(id="username") }}<br>
+
   <label for="password">Password: </label>
-  <input type="password" id="password" name="password"><br>
+
+  {{ form.password(id="password") }}<br>
+
   <input type="submit" value="Submit">
 </form>
+
 <p><a href="{{ url_for('auth.register') }}">Register</a></p>
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <div style="color: red; margin-bottom: 10px;">
-    {% for message in messages %}
-      <p>{{ message }}</p>
-    {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
-
-</body>
-</html>
+{% endblock %}

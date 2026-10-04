@@ -1,45 +1,44 @@
-<html>
-<head>
-    <title>{{ message.subject }}</title>
-</head>
-<body>
-    <h2>{{ message.subject }}</h2>
-    <p><strong>From:</strong> {{ message.sender_username }}</p>
-    <p><strong>Date:</strong> {{ message.timestamp }}</p>
-    <p>
-        <strong>Signature:</strong>
-        {% if signature_status == 'valid' %}
-            <span style="color: green;">valid</span>
-        {% elif signature_status == 'invalid' %}
-            <span style="color: red;">invalid</span>
-        {% elif signature_status == 'missing_sender_key' %}
-            <span style="color: orange;">cannot verify (missing sender public key)</span>
-        {% elif signature_status == 'not_signed' %}
-            <span style="color: gray;">not signed</span>
-        {% else %}
-            <span style="color: gray;">unknown</span>
-        {% endif %}
-    </p>
+{% extends "base.html" %}
+{% block title %}{{ message.subject }}{% endblock %}
 
-    <hr>
-    <p>{{ decrypted_data.body }}</p>
-
-    <hr>
-    {% if decrypted_data.attachment_filename and decrypted_data.attachment_content %}
-        <p>
-            <strong>Attachment:</strong> 
-            <a href="data:application/octet-stream;base64,{{ decrypted_data.attachment_content }}" 
-               download="{{ decrypted_data.attachment_filename }}">
-                {{ decrypted_data.attachment_filename }}
-            </a>
-        </p>
+{% block content %}
+<h2>{{ message.subject }}</h2>
+<p><strong>From:</strong> {{ message.sender.username }}</p>
+<p><strong>Date:</strong> {{ message.timestamp }}</p>
+<p>
+    <strong>Signature:</strong>
+    {% if signature_status == 'valid' %}
+        <span style="color: green;">valid</span>
+    {% elif signature_status == 'invalid' %}
+        <span style="color: red;">invalid</span>
+    {% elif signature_status == 'missing_sender_key' %}
+        <span style="color: orange;">cannot verify (missing sender public key)</span>
+    {% elif signature_status == 'not_signed' %}
+        <span style="color: gray;">not signed</span>
+    {% else %}
+        <span style="color: gray;">unknown</span>
     {% endif %}
+</p>
 
-    <hr>
-    <a href="{{ url_for('messages.messages') }}">Return to inbox</a>
-    
-    <form action="{{ url_for('messages.delete_message', message_id=message.id) }}" method="post" style="display: inline; margin-left: 20px;">
-        <input type="submit" value="Delete Message" onclick="return confirm('Are you sure you want to delete this message?');">
-    </form>
-</body>
-</html>
+<hr>
+<p>{{ decrypted_data.body }}</p>
+
+<hr>
+{% if decrypted_data.attachment_filename and decrypted_data.attachment_content %}
+    <p>
+        <strong>Attachment:</strong> 
+        <a href="data:application/octet-stream;base64,{{ decrypted_data.attachment_content }}" 
+           download="{{ decrypted_data.attachment_filename }}">
+            {{ decrypted_data.attachment_filename }}
+        </a>
+    </p>
+{% endif %}
+
+<hr>
+<a href="{{ url_for('messages.messages') }}">Return to inbox</a>
+
+<form action="{{ url_for('messages.delete_message', message_id=message.id) }}" method="post" style="display: inline; margin-left: 20px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="submit" value="Delete Message" onclick="return confirm('Are you sure you want to delete this message?');">
+</form>
+{% endblock %}
