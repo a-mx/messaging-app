@@ -8,3 +8,12 @@ A simple Flask web application for secure user-to-user messaging.
 - Message encryption (RSA + AES-GCM)
 - Digital message signatures (RSA + SHA-256)
 - SQLite database
+  
+## Setup
+
+```bash
+cp .env.example .env
+./nginx/generate_cert.sh
+make venv
+make run
+```
