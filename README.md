@@ -12,8 +12,10 @@ A simple Flask web application for secure user-to-user messaging.
 ## Setup
 
 ```bash
+git clone https://github.com/a-mx/messaging-app
+cd ./messaging-app
 cp .env.example .env
 ./nginx/generate_cert.sh
-make venv
 make run
 ```
+Open `localhost` in your browser.
